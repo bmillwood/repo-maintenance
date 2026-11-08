@@ -6,9 +6,11 @@ appear on a command line. By default they authenticate with gh's token.
 
 import functools
 import pathlib
+import re
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import jwt
@@ -72,10 +74,30 @@ def request(
     token: pydantic.SecretStr | None = None,
 ) -> bytes:
     """Make a request, authenticated with `token` if given, or gh's otherwise."""
+    content, _ = _request(
+        method, f"https://api.github.com{path}", body=body, token=token
+    )
+    return content
+
+
+def get_pages(path: str, *, token: pydantic.SecretStr | None = None) -> list[bytes]:
+    """GET every page of a paginated list, following the Link headers."""
+    pages = []
+    url: str | None = f"https://api.github.com{path}"
+    while url is not None:
+        content, url = _request("GET", url, body=None, token=token)
+        pages.append(content)
+    return pages
+
+
+def _request(
+    method: str, url: str, *, body: str | None, token: pydantic.SecretStr | None
+) -> tuple[bytes, str | None]:
+    """The response body, and the URL of the next page if there is one."""
     if token is None:
         token = gh_token()
     req = urllib.request.Request(
-        url=f"https://api.github.com{path}",
+        url=url,
         method=method,
         data=None if body is None else body.encode(),
         headers={
@@ -88,7 +110,10 @@ def request(
     )
     try:
         with urllib.request.urlopen(req) as response:
-            return response.read()
+            next_page = re.search(
+                r'<([^>]+)>; rel="next"', response.headers["Link"] or ""
+            )
+            return response.read(), next_page and next_page[1]
     except urllib.error.HTTPError as error:
         text = error.read().decode(errors="replace")
         try:
@@ -96,6 +121,8 @@ def request(
         except pydantic.ValidationError:
             message = text
         exception = NotFound if error.code == 404 else RequestFailed
+        split = urllib.parse.urlsplit(url)
+        path = split.path + (f"?{split.query}" if split.query else "")
         raise exception(
             method=method, path=path, status=error.code, message=message
         ) from None

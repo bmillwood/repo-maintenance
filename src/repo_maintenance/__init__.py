@@ -1,6 +1,7 @@
 """Idempotently apply packages of GitHub configuration.
 
-Operates on the named repos, or the current one if none are named.
+Operates on the named repos, and those of any --owner, or the current repo if
+neither is given.
 Authenticates with gh's token (via `gh auth token`), which needs to belong to
 a repo admin.
 
@@ -17,6 +18,7 @@ from collections.abc import Sequence
 from typing import Annotated
 
 import cyclopts
+import pydantic
 
 from repo_maintenance import (
     branch_protection,
@@ -30,6 +32,16 @@ from repo_maintenance import (
 app = cyclopts.App(help=__doc__)
 
 Repo = Annotated[str, cyclopts.Parameter(name="OWNER/REPO")]
+Owner = Annotated[
+    tuple[str, ...],
+    cyclopts.Parameter(
+        negative=(),
+        metavar="OWNER",
+        show_default=False,
+        help="Also operate on all of this user or organisation's repos that you"
+        " administer, except forks and archived ones. Can be repeated.",
+    ),
+]
 Apply = Annotated[
     bool,
     cyclopts.Parameter(
@@ -88,8 +100,57 @@ def _sync(*, repo_name: str, steps: Sequence[plan.Step], apply: bool) -> bool:
     return _plan(repo_name=repo_name, steps=steps) == []
 
 
-def _run(*, repos: Sequence[str], steps: Sequence[plan.Step], apply: bool) -> None:
-    if not repos:
+class _Owner(pydantic.BaseModel):
+    login: str
+
+
+class _Permissions(pydantic.BaseModel):
+    admin: bool
+
+
+class _ListedRepo(pydantic.BaseModel):
+    full_name: str
+    owner: _Owner
+    fork: bool
+    archived: bool
+    permissions: _Permissions
+
+
+def _owner_repos(owner: str) -> list[str]:
+    # Unlike /users/{owner}/repos, this includes private repos, and covers
+    # organisations as well as users.
+    listed = [
+        repo
+        for page in github.get_pages(
+            "/user/repos?affiliation=owner,organization_member&per_page=100"
+        )
+        for repo in pydantic.TypeAdapter(list[_ListedRepo]).validate_json(page)
+    ]
+    return [
+        repo.full_name
+        for repo in listed
+        if repo.owner.login.lower() == owner.lower()
+        and repo.permissions.admin
+        and not repo.fork
+        and not repo.archived
+    ]
+
+
+def _run(
+    *,
+    repos: Sequence[str],
+    owners: Sequence[str],
+    steps: Sequence[plan.Step],
+    apply: bool,
+) -> None:
+    repos = list(repos)
+    for owner in owners:
+        try:
+            repos += _owner_repos(owner)
+        except github.RequestFailed as error:
+            print(f"listing repos: {error}", file=sys.stderr)
+            sys.exit(1)
+    if not repos and not owners:
         try:
             repos = [github.current_repo()]
         except subprocess.CalledProcessError as error:
@@ -102,13 +163,13 @@ def _run(*, repos: Sequence[str], steps: Sequence[plan.Step], apply: bool) -> No
 
 
 @app.command(name="quality-of-life", help=quality_of_life.__doc__)
-def _quality_of_life(*repos: Repo, apply: Apply = False) -> None:
-    _run(repos=repos, steps=[quality_of_life.step], apply=apply)
+def _quality_of_life(*repos: Repo, owner: Owner = (), apply: Apply = False) -> None:
+    _run(repos=repos, owners=owner, steps=[quality_of_life.step], apply=apply)
 
 
 @app.command(name="branch-protection", help=branch_protection.__doc__)
-def _branch_protection(*repos: Repo, apply: Apply = False) -> None:
-    _run(repos=repos, steps=[branch_protection.step], apply=apply)
+def _branch_protection(*repos: Repo, owner: Owner = (), apply: Apply = False) -> None:
+    _run(repos=repos, owners=owner, steps=[branch_protection.step], apply=apply)
 
 
 @app.command(name="claude-setup", help=claude_setup.__doc__)
@@ -118,10 +179,12 @@ def _claude_setup(
         cyclopts.types.ExistingFile,
         cyclopts.Parameter(help=f"Private key of the {claude_setup.APP_SLUG} app."),
     ],
+    owner: Owner = (),
     apply: Apply = False,
 ) -> None:
     _run(
         repos=repos,
+        owners=owner,
         steps=[
             branch_protection.step,
             lambda repo: claude_setup.step(repo, app_private_key=app_private_key),
@@ -145,10 +208,12 @@ def _renovate_setup(
             help="Directory with the Renovate app's client_id.txt and private key.",
         ),
     ] = pathlib.Path.home() / ".config/renovate-app",  # noqa: B008
+    owner: Owner = (),
     apply: Apply = False,
 ) -> None:
     _run(
         repos=repos,
+        owners=owner,
         steps=[lambda repo: renovate_setup.step(repo, app_dir=app_dir)],
         apply=apply,
     )
