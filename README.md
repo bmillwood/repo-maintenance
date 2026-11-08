@@ -32,3 +32,20 @@ I'll get to this later.
 # Implementation
 
 By default I'd go to Python, packaged with uv (if it needs or wants external dependencies at all). But another language could win me over if it were more aggressively statically typed than Python and not much less ergonomic for this kind of application, or if there were something else cool and interesting about it.
+
+# Usage
+
+With `gh` authenticated as a repo admin:
+
+```sh
+uv run repo-maintenance OPERATION OWNER/REPO...           # dry run
+uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then re-check
+```
+
+A dry run exits with status 1 if anything would change.
+
+## Development
+
+Typecheck with `uv run ty check`. On NixOS the ty wheel from PyPI can't run, so
+use `nix-shell -p ty --run 'ty check'` instead (it picks up `.venv`
+automatically).
