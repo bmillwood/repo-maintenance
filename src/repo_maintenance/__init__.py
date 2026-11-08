@@ -1,7 +1,7 @@
 """Idempotently apply packages of GitHub configuration.
 
-Operates on the named repos, and those of any --owner, or the current repo if
-neither is given.
+Operates on the named repos, or all those of --all-owned-by, or else the
+current repo.
 Authenticates with gh's token (via `gh auth token`), which needs to belong to
 a repo admin.
 
@@ -32,14 +32,15 @@ from repo_maintenance import (
 app = cyclopts.App(help=__doc__)
 
 Repo = Annotated[str, cyclopts.Parameter(name="OWNER/REPO")]
-Owner = Annotated[
+AllOwnedBy = Annotated[
     tuple[str, ...],
     cyclopts.Parameter(
         negative=(),
         metavar="OWNER",
         show_default=False,
-        help="Also operate on all of this user or organisation's repos that you"
-        " administer, except forks and archived ones. Can be repeated.",
+        help="Instead of naming repos, operate on all of this user or"
+        " organisation's repos that you administer, except forks and archived"
+        " ones. Can be repeated.",
     ),
 ]
 Apply = Annotated[
@@ -143,6 +144,9 @@ def _run(
     steps: Sequence[plan.Step],
     apply: bool,
 ) -> None:
+    if repos and owners:
+        print("Name repos or use --all-owned-by, not both.", file=sys.stderr)
+        sys.exit(2)
     repos = list(repos)
     for owner in owners:
         try:
@@ -163,13 +167,17 @@ def _run(
 
 
 @app.command(name="quality-of-life", help=quality_of_life.__doc__)
-def _quality_of_life(*repos: Repo, owner: Owner = (), apply: Apply = False) -> None:
-    _run(repos=repos, owners=owner, steps=[quality_of_life.step], apply=apply)
+def _quality_of_life(
+    *repos: Repo, all_owned_by: AllOwnedBy = (), apply: Apply = False
+) -> None:
+    _run(repos=repos, owners=all_owned_by, steps=[quality_of_life.step], apply=apply)
 
 
 @app.command(name="branch-protection", help=branch_protection.__doc__)
-def _branch_protection(*repos: Repo, owner: Owner = (), apply: Apply = False) -> None:
-    _run(repos=repos, owners=owner, steps=[branch_protection.step], apply=apply)
+def _branch_protection(
+    *repos: Repo, all_owned_by: AllOwnedBy = (), apply: Apply = False
+) -> None:
+    _run(repos=repos, owners=all_owned_by, steps=[branch_protection.step], apply=apply)
 
 
 @app.command(name="claude-setup", help=claude_setup.__doc__)
@@ -179,12 +187,12 @@ def _claude_setup(
         cyclopts.types.ExistingFile,
         cyclopts.Parameter(help=f"Private key of the {claude_setup.APP_SLUG} app."),
     ],
-    owner: Owner = (),
+    all_owned_by: AllOwnedBy = (),
     apply: Apply = False,
 ) -> None:
     _run(
         repos=repos,
-        owners=owner,
+        owners=all_owned_by,
         steps=[
             branch_protection.step,
             lambda repo: claude_setup.step(repo, app_private_key=app_private_key),
@@ -208,12 +216,12 @@ def _renovate_setup(
             help="Directory with the Renovate app's client_id.txt and private key.",
         ),
     ] = pathlib.Path.home() / ".config/renovate-app",  # noqa: B008
-    owner: Owner = (),
+    all_owned_by: AllOwnedBy = (),
     apply: Apply = False,
 ) -> None:
     _run(
         repos=repos,
-        owners=owner,
+        owners=all_owned_by,
         steps=[lambda repo: renovate_setup.step(repo, app_dir=app_dir)],
         apply=apply,
     )
