@@ -14,8 +14,6 @@ import urllib.request
 import jwt
 import pydantic
 
-API = "https://api.github.com"
-
 
 class RequestFailed(Exception):
     def __init__(self, *, method: str, path: str, status: int, message: str) -> None:
@@ -64,7 +62,7 @@ def request(
     if token is None:
         token = gh_token()
     req = urllib.request.Request(
-        url=f"{API}{path}",
+        url=f"https://api.github.com{path}",
         method=method,
         data=None if body is None else body.encode(),
         headers={
