@@ -112,8 +112,9 @@ class ActiveRule(pydantic.BaseModel):
 
 # The REST docs (https://docs.github.com/en/rest/repos/rules) only say
 # actor_id is "the ID of the actor that can bypass a ruleset", without listing
-# the IDs of the built-in repository roles. 5 for admin is folklore; to check
-# it, look for a "Repository admin" bypass in the UI of a ruleset this created.
+# the IDs of the built-in repository roles. 5 for admin was confirmed by the
+# UI showing a "Repository admin" bypass on a ruleset this created. GraphQL
+# also exposes repositoryRoleName on bypass actors, but only when querying.
 REPOSITORY_ADMIN_ROLE_ID = 5
 
 DESIRED = Ruleset(
