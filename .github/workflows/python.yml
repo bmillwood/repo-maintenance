@@ -13,8 +13,8 @@ jobs:
     - run: uv sync --locked
     # The checks after this run even if earlier ones failed, so that one run
     # reports everything.
-    - run: uv run --no-sync ruff check --output-format github
+    - run: uv run ruff check --output-format github
     - if: ${{ !cancelled() }}
-      run: uv run --no-sync ruff format --check
+      run: uv run ruff format --check
     - if: ${{ !cancelled() }}
-      run: uv run --no-sync ty check --output-format github
+      run: uv run ty check --output-format github
