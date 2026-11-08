@@ -10,6 +10,7 @@ dependencies = [
     "cyclopts>=5.4.0",
     "pydantic>=2.14.3",
     "pyjwt[crypto]>=2.15.1",
+    "pynacl>=1.6.2",
 ]
 
 [project.scripts]

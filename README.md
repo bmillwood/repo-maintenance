@@ -11,8 +11,6 @@ uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then r
 
 `--help` describes each operation.
 
-Not yet implemented: `renovate-setup`.
-
 ## Development
 
 ```sh

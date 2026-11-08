@@ -38,6 +38,19 @@ def gh_token() -> pydantic.SecretStr:
     )
 
 
+def current_repo() -> str:
+    """OWNER/REPO for the repo gh considers current.
+
+    If there isn't one, gh explains why on stderr.
+    """
+    return subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    ).stdout.strip()
+
+
 def app_jwt(*, client_id: str, private_key: pathlib.Path) -> pydantic.SecretStr:
     """A short-lived token authenticating as a GitHub App itself."""
     now = int(time.time())
