@@ -83,4 +83,6 @@ def request(
         except pydantic.ValidationError:
             message = text
         exception = NotFound if error.code == 404 else RequestFailed
-        raise exception(method=method, path=path, status=error.code, message=message) from None
+        raise exception(
+            method=method, path=path, status=error.code, message=message
+        ) from None

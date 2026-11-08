@@ -41,6 +41,8 @@ def step(repo: plan.Repository, *, app_private_key: pathlib.Path) -> list[plan.C
     return [
         plan.Change(
             description=f"add to {APP_SLUG} app installation (by hand)",
-            action=plan.ManualStep(instruction=f"Add {repo.full_name} at {settings_url}"),
+            action=plan.ManualStep(
+                instruction=f"Add {repo.full_name} at {settings_url}"
+            ),
         )
     ]

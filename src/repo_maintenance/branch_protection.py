@@ -183,7 +183,9 @@ def step(repo: plan.Repository) -> list[plan.Change]:
                     description=f"create ruleset {DESIRED.name!r}",
                     detail=want,
                     action=plan.ApiCall(
-                        method="POST", path=f"/repos/{repo.full_name}/rulesets", body=body
+                        method="POST",
+                        path=f"/repos/{repo.full_name}/rulesets",
+                        body=body,
                     ),
                 )
             ]

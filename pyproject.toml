@@ -21,5 +21,9 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "ruff>=0.17.4",
     "ty>=0.0.99",
 ]
+
+[tool.ruff.lint]
+extend-select = ["B", "I", "UP"]
