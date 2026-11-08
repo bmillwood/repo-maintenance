@@ -68,6 +68,8 @@ def request(
         headers={
             "Authorization": f"Bearer {token.get_secret_value()}",
             "Accept": "application/vnd.github+json",
+            # Otherwise urllib labels any body as form-encoded.
+            "Content-Type": "application/json",
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
