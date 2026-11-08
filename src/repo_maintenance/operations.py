@@ -184,15 +184,21 @@ def claude_app_access(repo: models.Repository, *, config: Config) -> list[Change
         schema=pydantic.TypeAdapter(models.Installation),
         as_app=as_app,
     )
+    # The API for this (PUT /user/installations/{id}/repositories/{repo_id})
+    # rejects gh's OAuth token. Rather than juggle yet another kind of token,
+    # get the human to do it in the browser.
+    settings_url = f"https://github.com/settings/installations/{installation.id}"
     return [
         Change(
-            description=f"add to {CLAUDE_APP_SLUG} app installation {installation.id}",
-            # Has to be done by a repo admin, so not as_app.
-            apply=lambda: gh.send(
-                "PUT", f"/user/installations/{installation.id}/repositories/{repo.id}"
-            ),
+            description=f"add to {CLAUDE_APP_SLUG} app installation (by hand)",
+            detail=settings_url,
+            apply=lambda: _wait_for_human(f"Add {repo.full_name} at {settings_url}"),
         )
     ]
+
+
+def _wait_for_human(instruction: str) -> None:
+    input(f"{instruction}, then press Enter: ")
 
 
 OPERATIONS: dict[str, list[Step]] = {
