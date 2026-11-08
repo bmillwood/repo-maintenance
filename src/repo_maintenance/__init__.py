@@ -15,7 +15,13 @@ from typing import Annotated
 
 import cyclopts
 
-from repo_maintenance import branch_protection, claude_setup, github, plan, quality_of_life
+from repo_maintenance import (
+    branch_protection,
+    claude_setup,
+    github,
+    plan,
+    quality_of_life,
+)
 
 app = cyclopts.App(help=__doc__)
 
@@ -40,7 +46,9 @@ def _print_changes(*, repo_name: str, changes: list[plan.Change]) -> None:
 def _plan(*, repo_name: str, steps: Sequence[plan.Step]) -> list[plan.Change] | None:
     """The changes needed, or None (having said why) if we couldn't tell."""
     try:
-        repo = plan.Repository.model_validate_json(github.request("GET", f"/repos/{repo_name}"))
+        repo = plan.Repository.model_validate_json(
+            github.request("GET", f"/repos/{repo_name}")
+        )
         changes = [change for step in steps for change in step(repo)]
     except (github.RequestFailed, plan.CannotPlan) as error:
         print(f"{repo_name}: {error}", file=sys.stderr)
@@ -52,7 +60,9 @@ def _plan(*, repo_name: str, steps: Sequence[plan.Step]) -> list[plan.Change] | 
 def _do(action: plan.ApiCall | plan.ManualStep) -> None:
     match action:
         case plan.ApiCall(method=method, path=path, body=body):
-            github.request(method, path, body=None if body is None else json.dumps(body))
+            github.request(
+                method, path, body=None if body is None else json.dumps(body)
+            )
         case plan.ManualStep(instruction=instruction):
             input(f"{instruction}, then press Enter: ")
 
@@ -75,7 +85,9 @@ def _sync(*, repo_name: str, steps: Sequence[plan.Step], apply: bool) -> bool:
 
 
 def _run(*, repos: Sequence[str], steps: Sequence[plan.Step], apply: bool) -> None:
-    results = [_sync(repo_name=repo_name, steps=steps, apply=apply) for repo_name in repos]
+    results = [
+        _sync(repo_name=repo_name, steps=steps, apply=apply) for repo_name in repos
+    ]
     sys.exit(0 if all(results) else 1)
 
 
