@@ -13,10 +13,10 @@ import pydantic
 from repo_maintenance import github, plan
 
 APP_SLUG = "bmillwood-claude"
-
-
-class App(pydantic.BaseModel):
-    client_id: str
+# Not looked up from the slug: the app is private, and GET /apps/{slug} 404s
+# for gh's token. (The JWT needs this to be known first, so asking as the app
+# isn't an option either.)
+APP_CLIENT_ID = "Iv23liT64156LSTP1TAa"
 
 
 class Installation(pydantic.BaseModel):
@@ -24,8 +24,7 @@ class Installation(pydantic.BaseModel):
 
 
 def step(repo: plan.Repository, *, app_private_key: pathlib.Path) -> list[plan.Change]:
-    app = App.model_validate_json(github.request("GET", f"/apps/{APP_SLUG}"))
-    as_app = github.app_jwt(client_id=app.client_id, private_key=app_private_key)
+    as_app = github.app_jwt(client_id=APP_CLIENT_ID, private_key=app_private_key)
     try:
         # 404s if the repo isn't in the installation.
         github.request("GET", f"/repos/{repo.full_name}/installation", token=as_app)
