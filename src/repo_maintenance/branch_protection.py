@@ -136,6 +136,8 @@ DESIRED = Ruleset(
                 require_last_push_approval=True,
                 required_review_thread_resolution=False,
                 require_extra_approval_for_unattributed_changes=False,
+                # quality-of-life disables squash and rebase for all branches,
+                # no need to apply a further restriction here
                 allowed_merge_methods=["merge", "squash", "rebase"],
             ),
         ),
