@@ -44,6 +44,11 @@ uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then r
 
 A dry run exits with status 1 if anything would change.
 
+`claude-setup` also needs `--app-private-key PATH` for the bmillwood-claude
+app: checking which repos an installation covers needs either the app's own
+credentials or a user access token *for that app*, and gh's token is neither.
+Adding the repo is still done with gh's token, as that needs a repo admin.
+
 ## Development
 
 Typecheck with `uv run ty check`. On NixOS the ty wheel from PyPI can't run, so

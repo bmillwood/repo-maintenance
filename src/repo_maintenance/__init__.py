@@ -1,4 +1,5 @@
 import argparse
+import pathlib
 import sys
 
 import pydantic
@@ -6,9 +7,15 @@ import pydantic
 from repo_maintenance import gh, models, operations
 
 
-def plan(*, operation: str, repo_name: str) -> list[operations.Change]:
+def plan(
+    *, operation: str, repo_name: str, config: operations.Config
+) -> list[operations.Change]:
     repo = gh.get(f"/repos/{repo_name}", schema=pydantic.TypeAdapter(models.Repository))
-    return [change for step in operations.OPERATIONS[operation] for change in step(repo)]
+    return [
+        change
+        for step in operations.OPERATIONS[operation]
+        for change in step(repo, config=config)
+    ]
 
 
 def report(*, repo_name: str, changes: list[operations.Change]) -> None:
@@ -33,16 +40,22 @@ def main() -> None:
         action="store_true",
         help="make the changes, then check again that nothing is left to change",
     )
+    parser.add_argument(
+        "--app-private-key",
+        type=pathlib.Path,
+        help=f"private key for the {operations.CLAUDE_APP_SLUG} app (needed by claude-setup)",
+    )
     args = parser.parse_args()
+    config = operations.Config(app_private_key=args.app_private_key)
 
     out_of_sync = False
     for repo_name in args.repos:
-        changes = plan(operation=args.operation, repo_name=repo_name)
+        changes = plan(operation=args.operation, repo_name=repo_name, config=config)
         report(repo_name=repo_name, changes=changes)
         if args.apply and changes:
             for change in changes:
                 change.apply()
-            changes = plan(operation=args.operation, repo_name=repo_name)
+            changes = plan(operation=args.operation, repo_name=repo_name, config=config)
             if changes:
                 print(f"{repo_name}: still out of sync after applying changes!")
                 report(repo_name=repo_name, changes=changes)

@@ -124,25 +124,5 @@ class ActiveRule(pydantic.BaseModel):
 # App installations
 
 
-class Account(pydantic.BaseModel):
-    login: str
-
-
 class Installation(pydantic.BaseModel):
     id: int
-    app_slug: str
-    account: Account
-    repository_selection: Literal["all", "selected"]
-
-
-class InstallationsPage(pydantic.BaseModel):
-    installations: list[Installation]
-
-
-class RepositoryRef(pydantic.BaseModel):
-    id: int
-    full_name: str
-
-
-class InstallationRepositoriesPage(pydantic.BaseModel):
-    repositories: list[RepositoryRef]

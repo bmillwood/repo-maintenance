@@ -3,6 +3,8 @@
 import dataclasses
 import difflib
 import json
+import pathlib
+import typing
 from collections.abc import Callable
 
 import pydantic
@@ -17,7 +19,13 @@ class Change:
     apply: Callable[[], None]
 
 
-type Step = Callable[[models.Repository], list[Change]]
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class Config:
+    app_private_key: pathlib.Path | None
+
+
+class Step(typing.Protocol):
+    def __call__(self, repo: models.Repository, *, config: Config) -> list[Change]: ...
 
 
 # quality-of-life
@@ -25,7 +33,7 @@ type Step = Callable[[models.Repository], list[Change]]
 QUALITY_OF_LIFE = models.RepositorySettings(delete_branch_on_merge=True)
 
 
-def quality_of_life(repo: models.Repository) -> list[Change]:
+def quality_of_life(repo: models.Repository, *, config: Config) -> list[Change]:
     have = models.RepositorySettings.model_validate(repo, from_attributes=True)
     want_fields = QUALITY_OF_LIFE.model_dump()
     have_fields = have.model_dump()
@@ -85,7 +93,7 @@ def _canonical_json(ruleset: models.Ruleset) -> str:
     return json.dumps(data, indent=2, sort_keys=True)
 
 
-def branch_protection(repo: models.Repository) -> list[Change]:
+def branch_protection(repo: models.Repository, *, config: Config) -> list[Change]:
     branch = repo.default_branch
     try:
         gh.get(
@@ -151,33 +159,35 @@ def branch_protection(repo: models.Repository) -> list[Change]:
 # claude-setup
 
 CLAUDE_APP_SLUG = "bmillwood-claude"
+CLAUDE_APP_CLIENT_ID = "Iv23liT64156LSTP1TAa"
 
 
-def claude_app_access(repo: models.Repository) -> list[Change]:
+def claude_app_access(repo: models.Repository, *, config: Config) -> list[Change]:
+    if config.app_private_key is None:
+        raise SystemExit(f"--app-private-key (for {CLAUDE_APP_SLUG}) is required")
+    # Listing an installation's repos as a user needs a user access token for
+    # the app, which gh doesn't have, so ask the app itself instead.
+    as_app = gh.app_jwt(client_id=CLAUDE_APP_CLIENT_ID, private_key=config.app_private_key)
+    try:
+        gh.get(
+            f"/repos/{repo.full_name}/installation",
+            schema=pydantic.TypeAdapter(models.Installation),
+            as_app=as_app,
+        )
+    except gh.NotFound:
+        pass
+    else:
+        return []
     owner = repo.full_name.split("/")[0]
-    [installation] = [
-        installation
-        for page in gh.get_pages(
-            "/user/installations", schema=pydantic.TypeAdapter(models.InstallationsPage)
-        )
-        for installation in page.installations
-        if installation.app_slug == CLAUDE_APP_SLUG and installation.account.login == owner
-    ]
-    if installation.repository_selection == "all":
-        return []
-    installed_ids = {
-        installed.id
-        for page in gh.get_pages(
-            f"/user/installations/{installation.id}/repositories",
-            schema=pydantic.TypeAdapter(models.InstallationRepositoriesPage),
-        )
-        for installed in page.repositories
-    }
-    if repo.id in installed_ids:
-        return []
+    installation = gh.get(
+        f"/users/{owner}/installation",
+        schema=pydantic.TypeAdapter(models.Installation),
+        as_app=as_app,
+    )
     return [
         Change(
             description=f"add to {CLAUDE_APP_SLUG} app installation {installation.id}",
+            # Has to be done by a repo admin, so not as_app.
             apply=lambda: gh.send(
                 "PUT", f"/user/installations/{installation.id}/repositories/{repo.id}"
             ),
