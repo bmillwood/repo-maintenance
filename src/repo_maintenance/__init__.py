@@ -1,5 +1,6 @@
 """Idempotently apply packages of GitHub configuration.
 
+Operates on the named repos, or the current one if none are named.
 Authenticates with gh's token (via `gh auth token`), which needs to belong to
 a repo admin.
 
@@ -9,6 +10,7 @@ With --apply, makes the changes, then checks again that nothing is left.
 
 import io
 import json
+import pathlib
 import sys
 from collections.abc import Sequence
 from typing import Annotated
@@ -21,6 +23,7 @@ from repo_maintenance import (
     github,
     plan,
     quality_of_life,
+    renovate_setup,
 )
 
 app = cyclopts.App(help=__doc__)
@@ -85,6 +88,8 @@ def _sync(*, repo_name: str, steps: Sequence[plan.Step], apply: bool) -> bool:
 
 
 def _run(*, repos: Sequence[str], steps: Sequence[plan.Step], apply: bool) -> None:
+    if not repos:
+        repos = [github.current_repo()]
     results = [
         _sync(repo_name=repo_name, steps=steps, apply=apply) for repo_name in repos
     ]
@@ -116,6 +121,28 @@ def _claude_setup(
             branch_protection.step,
             lambda repo: claude_setup.step(repo, app_private_key=app_private_key),
         ],
+        apply=apply,
+    )
+
+
+@app.command(name="renovate-setup", help=renovate_setup.__doc__)
+def _renovate_setup(
+    *repos: Repo,
+    # The default is evaluated once, which is fine as paths are immutable, and
+    # lets --help show it.
+    app_dir: Annotated[
+        # Not ExistingDirectory: it's only needed if there's something to set.
+        pathlib.Path,
+        cyclopts.Parameter(
+            env_var="RENOVATE_APP_DIR",
+            help="Directory with the Renovate app's client_id.txt and private key.",
+        ),
+    ] = pathlib.Path.home() / ".config/renovate-app",  # noqa: B008
+    apply: Apply = False,
+) -> None:
+    _run(
+        repos=repos,
+        steps=[lambda repo: renovate_setup.step(repo, app_dir=app_dir)],
         apply=apply,
     )
 
