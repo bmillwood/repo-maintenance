@@ -1,0 +1,25 @@
+[project]
+name = "repo-maintenance"
+version = "0.1.0"
+description = "Idempotently apply packages of GitHub configuration"
+authors = [
+    { name = "Ben Millwood", email = "thebenmachine+git@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "cyclopts>=5.4.0",
+    "pydantic>=2.14.3",
+    "pyjwt[crypto]>=2.15.1",
+]
+
+[project.scripts]
+repo-maintenance = "repo_maintenance:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.99",
+]

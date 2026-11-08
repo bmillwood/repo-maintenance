@@ -1,34 +1,20 @@
-# Design
+# repo-maintenance
 
-Idempotent application of various packages of GitHub configuration.
+Idempotent application of various packages of GitHub configuration, run by hand
+from a shell where `gh` is logged in as a repo admin.
 
-Should support a dry-run mode, which measures deviations from the configuration, and an execution mode, which reruns the dry-run afterwards to ensure their expectations are in sync.
+```sh
+uv run repo-maintenance --help
+uv run repo-maintenance OPERATION OWNER/REPO...           # dry run
+uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then re-check
+```
 
-Intended to be run manually, from a shell with `gh` authenticated. (Or another authentication mechanism, if there's something that can't do.)
+`--help` describes each operation.
 
-## Operations
+Not yet implemented: `renovate-setup`.
 
-### quality-of-life
+## Development
 
-Sets the option for automatically deleting head branches when a PR is merged. (Will set other options I always want, as and when I remember what they are.)
-
-### branch-protection
-
-Installs a branch protection rule on the default branch that requires pull requests but can be overridden by repo admins.
-
-If the default branch already has rules:
-* if it has more than 1 rule, abort,
-* if it has 1 rule, dry-run should diff it against the proposed rule.
-
-### claude-setup
-
-1. Runs the `branch-protection` rule.
-2. Adds the given repo to the list of selected repositories for the installation of https://github.com/settings/apps/bmillwood-claude on my (bmillwood) user account.
-
-### renovate-setup
-
-I'll get to this later.
-
-# Implementation
-
-By default I'd go to Python, packaged with uv (if it needs or wants external dependencies at all). But another language could win me over if it were more aggressively statically typed than Python and not much less ergonomic for this kind of application, or if there were something else cool and interesting about it.
+Typecheck with `uv run ty check`. On NixOS the ty wheel from PyPI can't run, so
+use `nix-shell -p ty --run 'ty check'` instead (it picks up `.venv`
+automatically).
