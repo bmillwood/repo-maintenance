@@ -39,11 +39,14 @@ def gh_token() -> pydantic.SecretStr:
 
 
 def current_repo() -> str:
-    """OWNER/REPO for the repo gh considers current."""
+    """OWNER/REPO for the repo gh considers current.
+
+    If there isn't one, gh explains why on stderr.
+    """
     return subprocess.run(
         ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
         check=True,
-        capture_output=True,
+        stdout=subprocess.PIPE,
         text=True,
     ).stdout.strip()
 

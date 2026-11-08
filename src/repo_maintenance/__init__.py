@@ -11,6 +11,7 @@ With --apply, makes the changes, then checks again that nothing is left.
 import io
 import json
 import pathlib
+import subprocess
 import sys
 from collections.abc import Sequence
 from typing import Annotated
@@ -89,7 +90,11 @@ def _sync(*, repo_name: str, steps: Sequence[plan.Step], apply: bool) -> bool:
 
 def _run(*, repos: Sequence[str], steps: Sequence[plan.Step], apply: bool) -> None:
     if not repos:
-        repos = [github.current_repo()]
+        try:
+            repos = [github.current_repo()]
+        except subprocess.CalledProcessError as error:
+            print("No OWNER/REPO given, and no current repo.", file=sys.stderr)
+            sys.exit(error.returncode)
     results = [
         _sync(repo_name=repo_name, steps=steps, apply=apply) for repo_name in repos
     ]
