@@ -169,9 +169,13 @@ def step(repo: plan.Repository) -> list[plan.Change]:
             " remove it (or convert it to a ruleset) by hand first"
         )
 
-    active_rules = pydantic.TypeAdapter(list[ActiveRule]).validate_json(
-        github.request("GET", f"/repos/{repo.full_name}/rules/branches/{branch}")
-    )
+    active_rules = [
+        rule
+        for page in github.get_pages(
+            f"/repos/{repo.full_name}/rules/branches/{branch}?per_page=100"
+        )
+        for rule in pydantic.TypeAdapter(list[ActiveRule]).validate_json(page)
+    ]
     ruleset_ids = sorted({rule.ruleset_id for rule in active_rules})
     want = _canonical_json(DESIRED)
     body = DESIRED.model_dump(mode="json")
