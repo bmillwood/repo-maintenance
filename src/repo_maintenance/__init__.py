@@ -162,21 +162,21 @@ def _run(
     sys.exit(0 if all(results) else 1)
 
 
-@app.command(name="quality-of-life", help=quality_of_life.__doc__)
+@app.command(help=quality_of_life.__doc__)
 def _quality_of_life(
     *repos: Repo, all_owned_by: AllOwnedBy = (), apply: Apply = False
 ) -> None:
     _run(repos=repos, owners=all_owned_by, steps=[quality_of_life.step], apply=apply)
 
 
-@app.command(name="branch-protection", help=branch_protection.__doc__)
+@app.command(help=branch_protection.__doc__)
 def _branch_protection(
     *repos: Repo, all_owned_by: AllOwnedBy = (), apply: Apply = False
 ) -> None:
     _run(repos=repos, owners=all_owned_by, steps=[branch_protection.step], apply=apply)
 
 
-@app.command(name="claude-setup", help=claude_setup.__doc__)
+@app.command(help=claude_setup.__doc__)
 def _claude_setup(
     *repos: Repo,
     app_private_key: Annotated[
@@ -197,7 +197,7 @@ def _claude_setup(
     )
 
 
-@app.command(name="renovate-setup", help=renovate_setup.__doc__)
+@app.command(help=renovate_setup.__doc__)
 def _renovate_setup(
     *repos: Repo,
     # The noqa on the default below is for B008, which flags function calls in
