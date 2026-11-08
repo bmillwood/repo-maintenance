@@ -193,17 +193,20 @@ def step(repo: plan.Repository) -> list[plan.Change]:
             have = _canonical_json(existing)
             if have == want:
                 return []
-            diff = difflib.unified_diff(
-                have.splitlines(),
-                want.splitlines(),
-                fromfile=f"ruleset {ruleset_id} (current)",
-                tofile=f"ruleset {ruleset_id} (desired)",
-                lineterm="",
+            diff = "\n".join(
+                difflib.unified_diff(
+                    have.splitlines(),
+                    want.splitlines(),
+                    fromfile=f"ruleset {ruleset_id} (current)",
+                    tofile=f"ruleset {ruleset_id} (desired)",
+                    lineterm="",
+                )
             )
+            assert diff
             return [
                 plan.Change(
                     description=f"update ruleset {ruleset_id} ({existing.name!r})",
-                    detail="\n".join(diff),
+                    detail=diff,
                     action=plan.ApiCall(method="PUT", path=path, body=body),
                 )
             ]
