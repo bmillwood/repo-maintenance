@@ -1,7 +1,7 @@
 """Idempotently apply packages of GitHub configuration.
 
-Operates on the named repos, or all those of --all-owned-by, or else the
-current repo.
+Operates on the named repos and all those of --all-owned-by, or the current
+repo if there are neither.
 Authenticates with gh's token (via `gh auth token`), which needs to belong to
 a repo admin.
 
@@ -38,9 +38,8 @@ AllOwnedBy = Annotated[
         negative=(),
         metavar="OWNER",
         show_default=False,
-        help="Instead of naming repos, operate on all of this user or"
-        " organisation's repos that you administer, except forks and archived"
-        " ones. Can be repeated.",
+        help="Also operate on all of this user or organisation's repos that you"
+        " administer, except forks and archived ones. Can be repeated.",
     ),
 ]
 Apply = Annotated[
@@ -144,9 +143,6 @@ def _run(
     steps: Sequence[plan.Step],
     apply: bool,
 ) -> None:
-    if repos and owners:
-        print("Name repos or use --all-owned-by, not both.", file=sys.stderr)
-        sys.exit(2)
     repos = list(repos)
     for owner in owners:
         try:
