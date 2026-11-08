@@ -74,9 +74,11 @@ def request(
     token: pydantic.SecretStr | None = None,
 ) -> bytes:
     """Make a request, authenticated with `token` if given, or gh's otherwise."""
-    content, _ = _request(
+    content, next_page = _request(
         method, f"https://api.github.com{path}", body=body, token=token
     )
+    # Otherwise we'd silently see only the first page.
+    assert next_page is None, f"{path} is paginated; use get_pages"
     return content
 
 
