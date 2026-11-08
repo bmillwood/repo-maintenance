@@ -133,8 +133,10 @@ def _claude_setup(
 @app.command(name="renovate-setup", help=renovate_setup.__doc__)
 def _renovate_setup(
     *repos: Repo,
-    # The default is evaluated once, which is fine as paths are immutable, and
-    # lets --help show it.
+    # The noqa on the default below is for B008, which flags function calls in
+    # defaults: they're evaluated once, when the function is defined, so a
+    # mutable result would be shared between calls. Paths are immutable, so
+    # that's harmless, and evaluating it up front lets --help show it.
     app_dir: Annotated[
         # Not ExistingDirectory: it's only needed if there's something to set.
         pathlib.Path,
