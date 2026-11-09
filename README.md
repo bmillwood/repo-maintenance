@@ -8,7 +8,7 @@ logged in as a repo admin.
 uv run repo-maintenance --help
 uv run repo-maintenance OPERATION OWNER/REPO...           # dry run
 uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then re-check
-uv run repo-maintenance secrets-survey OWNER/REPO...      # read-only report
+uv run repo-maintenance SURVEY OWNER/REPO...              # read-only report
 ```
 
 `--help` describes each operation.

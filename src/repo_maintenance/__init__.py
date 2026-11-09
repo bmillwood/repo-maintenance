@@ -15,7 +15,7 @@ import json
 import pathlib
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Annotated
 
 import cyclopts
@@ -28,7 +28,7 @@ from repo_maintenance import (
     plan,
     quality_of_life,
     renovate_setup,
-    secrets_survey,
+    survey,
 )
 
 app = cyclopts.App(help=__doc__)
@@ -230,10 +230,24 @@ def _renovate_setup(
     )
 
 
-@app.command(help=secrets_survey.__doc__)
+def _survey(
+    *,
+    repos: Sequence[str],
+    owners: Sequence[str],
+    describe: Callable[[str], frozenset[str]],
+) -> None:
+    repo_names = _repo_names(repos=repos, owners=owners)
+    sys.exit(0 if survey.survey(repo_names, describe=describe) else 1)
+
+
+@app.command(help=survey.secret_names.__doc__)
 def _secrets_survey(*repos: Repo, all_owned_by: AllOwnedBy = ()) -> None:
-    repo_names = _repo_names(repos=repos, owners=all_owned_by)
-    sys.exit(0 if secrets_survey.survey(repo_names) else 1)
+    _survey(repos=repos, owners=all_owned_by, describe=survey.secret_names)
+
+
+@app.command(help=survey.collaborators.__doc__)
+def _collaborators_survey(*repos: Repo, all_owned_by: AllOwnedBy = ()) -> None:
+    _survey(repos=repos, owners=all_owned_by, describe=survey.collaborators)
 
 
 def main() -> None:
