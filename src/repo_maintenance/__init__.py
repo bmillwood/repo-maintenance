@@ -1,12 +1,13 @@
-"""Idempotently apply packages of GitHub configuration.
+"""Idempotently apply packages of GitHub configuration, or survey it.
 
 Operates on the named repos and all those of --all-owned-by, or the current
 repo if there are neither.
 Authenticates with gh's token (via `gh auth token`), which needs to belong to
 a repo admin.
 
-By default, only reports what would change, exiting 1 if anything would.
-With --apply, makes the changes, then checks again that nothing is left.
+By default, operations only report what would change, exiting 1 if anything
+would. With --apply, they make the changes, then check again that nothing is
+left.
 """
 
 import io
@@ -27,6 +28,7 @@ from repo_maintenance import (
     plan,
     quality_of_life,
     renovate_setup,
+    secrets_survey,
 )
 
 app = cyclopts.App(help=__doc__)
@@ -136,13 +138,7 @@ def _owner_repos(owner: str) -> list[str]:
     ]
 
 
-def _run(
-    *,
-    repos: Sequence[str],
-    owners: Sequence[str],
-    steps: Sequence[plan.Step],
-    apply: bool,
-) -> None:
+def _repo_names(*, repos: Sequence[str], owners: Sequence[str]) -> list[str]:
     repos = list(repos)
     for owner in owners:
         try:
@@ -156,6 +152,17 @@ def _run(
         except subprocess.CalledProcessError as error:
             print("No OWNER/REPO given, and no current repo.", file=sys.stderr)
             sys.exit(error.returncode)
+    return repos
+
+
+def _run(
+    *,
+    repos: Sequence[str],
+    owners: Sequence[str],
+    steps: Sequence[plan.Step],
+    apply: bool,
+) -> None:
+    repos = _repo_names(repos=repos, owners=owners)
     results = [
         _sync(repo_name=repo_name, steps=steps, apply=apply) for repo_name in repos
     ]
@@ -221,6 +228,12 @@ def _renovate_setup(
         steps=[lambda repo: renovate_setup.step(repo, app_dir=app_dir)],
         apply=apply,
     )
+
+
+@app.command(help=secrets_survey.__doc__)
+def _secrets_survey(*repos: Repo, all_owned_by: AllOwnedBy = ()) -> None:
+    repo_names = _repo_names(repos=repos, owners=all_owned_by)
+    sys.exit(0 if secrets_survey.survey(repo_names) else 1)
 
 
 def main() -> None:

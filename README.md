@@ -1,12 +1,14 @@
 # repo-maintenance
 
-Idempotent application of various packages of GitHub configuration, run by hand
-from a shell where `gh` is logged in as a repo admin.
+Idempotent application of various packages of GitHub configuration (and the
+occasional read-only survey of it), run by hand from a shell where `gh` is
+logged in as a repo admin.
 
 ```sh
 uv run repo-maintenance --help
 uv run repo-maintenance OPERATION OWNER/REPO...           # dry run
 uv run repo-maintenance OPERATION OWNER/REPO... --apply   # make changes, then re-check
+uv run repo-maintenance secrets-survey OWNER/REPO...      # read-only report
 ```
 
 `--help` describes each operation.
